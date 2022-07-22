@@ -147,8 +147,8 @@ func (h *campaignHandler) UploadImage(c *gin.Context) {
 	}
 
 	userID := currentUser.ID
-
-	path := fmt.Sprintf("images/%d-%s", userID, file.Filename)
+	path := fmt.Sprintf("/home/muhammadfahrezam/bwastartup/images/%d-%s", userID, file.Filename)
+	pathName := fmt.Sprintf("%d-%s", userID, file.Filename)
 
 	err = c.SaveUploadedFile(file, path)
 	if err != nil {
@@ -159,7 +159,7 @@ func (h *campaignHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	_, err = h.service.SaveCampaignImage(input, path)
+	_, err = h.service.SaveCampaignImage(input, pathName)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Upload Campaign Image Failed", http.StatusBadRequest, "error", data)

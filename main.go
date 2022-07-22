@@ -46,7 +46,7 @@ func main() {
 
 	router := gin.Default()
 	router.Use(cors.Default())
-	router.Static("/home/muhammadfahrezam/bwastartup/images", "./images")
+	router.Static("/images", "/home/muhammadfahrezam/bwastartup/images")
 	api := router.Group("/api/v1")
 
 	api.POST("/users", userHandler.RegisterUser)

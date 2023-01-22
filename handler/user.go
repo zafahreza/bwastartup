@@ -6,6 +6,7 @@ import (
 	"bwastartup/user"
 	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -200,7 +201,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	//path := fmt.Sprintf("/home/muhammadfahrezam/bwastartup/images/%d-%s", userID, file.Filename)
-	//pathName := fmt.Sprintf("%d-%s", userID, <-fileName)
+	//pathName := fmt.Sprintf("%d-%s", userID, fileName)
 	//err = h.userService.UploadToCloud(file, userID)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
@@ -210,8 +211,8 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	//imageUrl := fmt.Sprintf("https://storage.googleapis.com/donation_alert/%s", pathName)
-	_, err = h.userService.SaveAvatar(userID, fileName)
+	imageUrl := fmt.Sprintf("https://storage.googleapis.com/donation_alert/%s", fileName)
+	_, err = h.userService.SaveAvatar(userID, imageUrl)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Ups Upload avatar image failed", http.StatusBadRequest, "error", data)

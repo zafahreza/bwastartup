@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -12,6 +11,7 @@ type Service interface {
 	IsEmailAvailable(input CheckEmailInput) (bool, error)
 	SaveAvatar(ID int, fileLocation string) (User, error)
 	GetUserByID(ID int) (User, error)
+	//UploadToCloud(file *multipart.FileHeader, userId int) error
 }
 
 type service struct {
@@ -106,3 +106,45 @@ func (s *service) GetUserByID(ID int) (User, error) {
 	}
 	return user, nil
 }
+
+//func (s *service) UploadToCloud(file *multipart.FileHeader, userId int) error {
+//	bucket := "donation_alert"
+//	object := file.Filename
+//	pathName := fmt.Sprintf("%d-%s", userId, file.Filename)
+//	ctx := context.Background()
+//	client, err := storage.NewClient(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	defer client.Close()
+//
+//	newFile, err := file.Open()
+//	if err != nil {
+//		return err
+//	}
+//	defer newFile.Close()
+//	var b []byte
+//
+//	newFile.Read(b)
+//	buf := bytes.NewBuffer(b)
+//
+//	ctx, cancel := context.WithTimeout(ctx, time.Second*50)
+//	defer cancel()
+//
+//	// Upload an object with storage2.Writer.
+//	wc := client.Bucket(bucket).Object(object).NewWriter(ctx)
+//	wc.ChunkSize = 0 // note retries are not supported for chunk size 0.
+//
+//	if _, err = io.Copy(wc, buf); err != nil {
+//		return err
+//	}
+//	// Data can continue to be added to the file until the writer is closed.
+//	if err := wc.Close(); err != nil {
+//		return err
+//	}
+//	acl := client.Bucket(bucket).Object(object).ACL()
+//	if err := acl.Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
+//		return err
+//	}
+//	return nil
+//}

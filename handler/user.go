@@ -4,7 +4,10 @@ import (
 	"bwastartup/auth"
 	"bwastartup/helper"
 	"bwastartup/user"
+	"cloud.google.com/go/storage"
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -124,7 +127,7 @@ func (h *userHandler) CheckEmailAvailability(c *gin.Context) {
 }
 
 func (h *userHandler) UploadAvatar(c *gin.Context) {
-	file, err := c.FormFile("avatar")
+	file, err := c.Request.MultipartReader()
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
@@ -132,12 +135,49 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-
+	var foundImage bool
+	fileName := make(chan string)
 	currentUser := c.MustGet("currentUser").(user.User)
 	userID := currentUser.ID
-	path := fmt.Sprintf("/home/muhammadfahrezam/bwastartup/images/%d-%s", userID, file.Filename)
-	pathName := fmt.Sprintf("%d-%s", userID, file.Filename)
-	err = c.SaveUploadedFile(file, path)
+	for {
+		next, err := file.NextPart()
+		if err == io.EOF {
+			fileName <- next.FileName()
+			break
+		}
+		if err != nil {
+			return
+		}
+		if next.FormName() == "avatar" {
+			foundImage = true
+			ctx := context.Background()
+			client, err := storage.NewClient(ctx)
+			if err != nil {
+				panic(err)
+			}
+
+			bucket := client.Bucket("donation_alert")
+			w := bucket.Object(next.FileName()).NewWriter(ctx)
+			if _, err := io.Copy(w, next); err != nil {
+				return
+			}
+			if err := w.Close(); err != nil {
+				return
+			}
+			pathName := fmt.Sprintf("%d-%s", userID, next.FileName())
+			acl := bucket.Object(pathName).ACL()
+			if err := acl.Set(c, storage.AllUsers, storage.RoleReader); err != nil {
+				panic(err)
+			}
+		}
+	}
+	if !foundImage {
+		panic("not found file")
+	}
+
+	//path := fmt.Sprintf("/home/muhammadfahrezam/bwastartup/images/%d-%s", userID, file.Filename)
+	pathName := fmt.Sprintf("%d-%s", userID, <-fileName)
+	//err = h.userService.UploadToCloud(file, userID)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
@@ -146,7 +186,8 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	_, err = h.userService.SaveAvatar(userID, pathName)
+	imageUrl := fmt.Sprintf("https://storage.googleapis.com/donation_alert/%s", pathName)
+	_, err = h.userService.SaveAvatar(userID, imageUrl)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Ups Upload avatar image failed", http.StatusBadRequest, "error", data)

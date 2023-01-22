@@ -134,6 +134,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
+
 	var foundImage bool
 	fileName := make(chan string)
 	currentUser := c.MustGet("currentUser").(user.User)
@@ -141,10 +142,13 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 	for {
 		next, err := file.NextPart()
 		if err == io.EOF {
-			fileName <- next.FileName()
 			break
 		}
 		if err != nil {
+			data := gin.H{"is_uploaded": false}
+			response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+			c.JSON(http.StatusBadRequest, response)
 			return
 		}
 		if next.FormName() == "avatar" {
@@ -152,26 +156,49 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 			ctx := context.Background()
 			client, err := storage.NewClient(ctx)
 			if err != nil {
-				panic(err)
+				data := gin.H{"is_uploaded": false}
+				response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+				c.JSON(http.StatusBadRequest, response)
+				return
 			}
 
 			bucket := client.Bucket("donation_alert")
 			w := bucket.Object(next.FileName()).NewWriter(ctx)
 			if _, err := io.Copy(w, next); err != nil {
+				data := gin.H{"is_uploaded": false}
+				response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 			if err := w.Close(); err != nil {
+				data := gin.H{"is_uploaded": false}
+				response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+				c.JSON(http.StatusBadRequest, response)
 				return
+			}
+			if len(fileName) == 0 {
+				fileName <- next.FileName()
 			}
 			//pathName := fmt.Sprintf("%d-%s", userID, next.FileName())
 			acl := bucket.Object(next.FileName()).ACL()
 			if err := acl.Set(c, storage.AllUsers, storage.RoleReader); err != nil {
-				panic(err)
+				data := gin.H{"is_uploaded": false}
+				response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+				c.JSON(http.StatusBadRequest, response)
+				return
 			}
 		}
 	}
 	if !foundImage {
-		panic("not found file")
+		data := gin.H{"is_uploaded": false}
+		response := helper.APIResponse("Upload avatar image failed", http.StatusBadRequest, "error", data)
+
+		c.JSON(http.StatusBadRequest, response)
+		return
 	}
 
 	//path := fmt.Sprintf("/home/muhammadfahrezam/bwastartup/images/%d-%s", userID, file.Filename)

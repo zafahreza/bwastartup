@@ -136,7 +136,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	var foundImage bool
-	fileName := make(chan string)
+	var fileName string
 	currentUser := c.MustGet("currentUser").(user.User)
 	userID := currentUser.ID
 	for {
@@ -179,10 +179,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
-			if len(fileName) == 0 {
-				fileName <- next.FileName()
-			}
-			//pathName := fmt.Sprintf("%d-%s", userID, next.FileName())
+
 			acl := bucket.Object(next.FileName()).ACL()
 			if err := acl.Set(c, storage.AllUsers, storage.RoleReader); err != nil {
 				data := gin.H{"is_uploaded": false}
@@ -191,6 +188,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
+			fileName = next.FileName()
 		}
 	}
 	if !foundImage {
@@ -213,7 +211,7 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	//imageUrl := fmt.Sprintf("https://storage.googleapis.com/donation_alert/%s", pathName)
-	_, err = h.userService.SaveAvatar(userID, <-fileName)
+	_, err = h.userService.SaveAvatar(userID, fileName)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Ups Upload avatar image failed", http.StatusBadRequest, "error", data)
